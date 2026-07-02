@@ -41,7 +41,7 @@ pipeline {
             }
         }
 
-        stage('SonarQube analysis') {
+        stage('SonarQube analysis & Quality Gate') {
             steps {
                 withSonarQubeEnv('sonar-louisan') {
                     withCredentials([
@@ -49,26 +49,20 @@ pipeline {
                     ]) {
                         sh '''
                             npx --yes sonar-scanner \
-                              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-                              -Dsonar.sources=src \
-                              -Dsonar.test.inclusions=**/*.test.ts \
-                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-                              -Dsonar.sourceEncoding=UTF-8 \
-                              -Dsonar.host.url=$SONAR_HOST_URL \
-                              -Dsonar.token=$SONAR_TOKEN
+                            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                            -Dsonar.sources=src \
+                            -Dsonar.test.inclusions=**/*.test.ts \
+                            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                            -Dsonar.sourceEncoding=UTF-8 \
+                            -Dsonar.host.url=$SONAR_HOST_URL \
+                            -Dsonar.token=$SONAR_TOKEN \
+                            -Dsonar.qualitygate.wait=true
                         '''
                     }
                 }
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
 
         stage('Build Docker Image') {
             steps {
