@@ -41,16 +41,31 @@ pipeline {
             }
         }
 
-        stage('SonarQube analysis and Quality Gate') {
+        stage('SonarQube analysis') {
             steps {
-                withCredentials([string(credentialsId: 'faustine-sonar-token-back', variable: 'SONAR_TOKEN')]) {
-                sh '''
-                    docker compose -f docker-compose.ci.yml run --rm \
-                    -e SONAR_HOST_URL="${SONAR_HOST_URL}" \
-                    -e SONAR_TOKEN="${SONAR_TOKEN}" \
-                    -e SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY}" \
-                    sonar-scanner
-                '''
+                withSonarQubeEnv('sonarqube-server-2') {
+                    withCredentials([
+                        string(credentialsId: 'faustine-sonar-token-back', variable: 'SONAR_TOKEN')
+                    ]) {
+                        sh '''
+                            npx --yes sonar-scanner \
+                              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                              -Dsonar.sources=src \
+                              -Dsonar.test.inclusions=**/*.test.ts \
+                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                              -Dsonar.sourceEncoding=UTF-8 \
+                              -Dsonar.host.url=$SONAR_HOST_URL \
+                              -Dsonar.token=$SONAR_TOKEN
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
